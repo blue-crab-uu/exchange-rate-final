@@ -1,15 +1,27 @@
 import express from 'express';
-import { getDayALLRatesController, getONneHistoryRatesController, getCurrencyListController } from '../controllers/rateController.js';
-
+import { getDayALLRatesController, getONneHistoryRatesController, getCurrencyListController, getLatestRateDateController } from '../controllers/rateController.js';
+import { getExchangeRateListController, fetchHistoricalRatesController, fetchLatestRatesController } from '../controllers/devRateContorller.js';
 const router = express.Router();
 
 // 获取指定日期的所有汇率
-router.get('/day-all-rates', getDayALLRatesController);
+router.post('/day-all-rates', getDayALLRatesController);
 
 // 获取指定日期的指定货币对汇率 - 使用查询字符串格式
-router.get('/history-rates', getONneHistoryRatesController);
+router.post('/history-rates', getONneHistoryRatesController);
 
 // 获取支持的货币列表
 router.get('/currency-list', getCurrencyListController);
+
+// 获取数据库中最新的rate_date
+router.get('/latest-rate-date', getLatestRateDateController);
+
+// 开发用 - 获取 Frankfurter 支持的所有货币列表
+router.get('/dev/currency-list', getExchangeRateListController);
+
+// 开发用 - 获取指定日期范围内的历史汇率数据
+router.post('/dev/historical-rates', fetchHistoricalRatesController);
+
+// 开发用 - 获取 Frankfurter 的最新汇率数据
+router.get('/dev/latest-rates', fetchLatestRatesController);
 
 export default router;

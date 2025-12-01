@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>货币列表</title>
+    <!-- 引入 Vue.js 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #f8fafc;
+        }
+
+        .currency-card {
+            transition: all 0.3s ease;
+        }
+
+        .currency-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+
+<body class="min-h-screen p-4 md:p-8">
+    <div id="app" class="max-w-6xl mx-auto">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">货币列表</h1>
+            <p class="text-gray-600 mt-2">展示数据库中的货币名称</p>
+        </header>
+
+        <main>
+            <!-- 加载状态 -->
+            <div v-if="loading" class="flex justify-center items-center h-64">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+
+            <!-- 错误信息 -->
+            <div v-else-if="error" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                {{ error }}
+            </div>
+
+            <!-- 货币列表 -->
+            <div v-if="currencies.length > 0"
+                class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2 mb-8">
+                <div v-for="currency in currencies" :key="currency.id"
+                    class="currency-card bg-white rounded-lg shadow p-2 border border-gray-200">
+                    <div class="font-bold text-sm text-blue-600">{{ currency.currency_code }}</div>
+                    <div class="text-xs text-gray-600 mt-0.5">{{ currency.currency_name }}</div>
+                </div>
+            </div>
+
+            <!-- 最新汇率数据 -->
+            <div v-if="latestRates.length > 0">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">最新汇率数据</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white rounded-lg shadow overflow-hidden">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th
+                                    class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    基准货币</th>
+                                <th
+                                    class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    目标货币</th>
+                                <th
+                                    class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    汇率日期</th>
+                                <th
+                                    class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    汇率</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            <tr v-for="rate in latestRates" :key="rate.id">
+                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{{
+                                    rate.base_currency }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ rate.target_currency }}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ rate.rate_date }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ rate.exchange_rate }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 空状态 -->
+            <div v-if="!loading && !error && currencies.length === 0" class="text-center py-12">
+                <p class="text-gray-500">暂无货币数据</p>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    currencies: [],
+                    latestRates: [],
+                    loading: false,
+                    error: null
+                };
+            },
+            mounted() {
+                this.fetchCurrencies();
+                this.fetchLatestRates();
+            },
+            methods: {
+                async fetchCurrencies() {
+                    this.loading = true;
+                    this.error = null;
+
+                    try {
+                        const response = await fetch('http://localhost:3000/currency-list');
+                        if (!response.ok) {
+                            throw new Error('获取货币列表失败');
+                        }
+
+                        const data = await response.json();
+                        this.currencies = data;
+                    } catch (err) {
+                        this.error = err.message;
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                async fetchLatestRates() {
+                    try {
+                        const response = await fetch('http://localhost:3000/latest-rate-date');
+                        if (!response.ok) {
+                            throw new Error('获取最新汇率数据失败');
+                        }
+
+                        const data = await response.json();
+                        this.latestRates = data.latestRates;
+                    } catch (err) {
+                        console.error('获取最新汇率数据失败:', err);
+                    }
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+
+</html>

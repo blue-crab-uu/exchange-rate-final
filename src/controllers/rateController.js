@@ -1,19 +1,23 @@
-import { getDayALLRates, getONneHistoryRates, getCurrencyList } from '../server/rateServer.js';
+import { getDayALLRates, getONneHistoryRates, getCurrencyList, getLatestRateDate } from '../server/rateServer.js';
 
-// 查询数据库指定日期默认货币为USD的汇率
+
+// 查询数据库指定日期默认货币为EUR的汇率
 export async function getDayALLRatesController(req, res) {
-  const { base_currency, date } = req.query;
+  const { base_currency, date } = req.body;
+  console.log('收到一日多货币汇率查询请求:', { base_currency, date });
   try {
     const historyRates = await getDayALLRates(base_currency, date);
+    console.log('查询成功，返回数据条数:', historyRates.length);
     res.json(historyRates);
   } catch (error) {
+    console.error('查询失败:', error);
     res.status(500).json({ error: '获取汇率失败' });
   }
 };
 
-// 查询数据库指定日期指定目标货币的汇率，默认基础货币为USD
+// 查询数据库指定日期指定目标货币的汇率，默认基础货币为EUR
 export async function getONneHistoryRatesController(req, res) {
-  const { base_currency, target_currency, date } = req.query;
+  const { base_currency, target_currency, date } = req.body;
   try {
     const historyRates = await getONneHistoryRates(base_currency, target_currency, date);
     res.json(historyRates);
@@ -31,3 +35,15 @@ export async function getCurrencyListController(_req, res) {
     res.status(500).json({ error: '获取货币列表失败' });
   }
 };
+
+// 获取数据库中最新的rate_date
+export async function getLatestRateDateController(_req, res) {
+  try {
+    const latestRates = await getLatestRateDate();
+    res.json({ latestRates });
+  } catch (error) {
+    res.status(500).json({ error: '获取最新汇率日期失败' });
+  }
+}
+
+

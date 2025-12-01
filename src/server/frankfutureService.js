@@ -6,7 +6,7 @@ import HistoryRate from '../models/historyRateModels.js';
 const frankfurterbaseURL = process.env.FRANKFURTER_API_URL || 'https://api.frankfurter.dev/v1'
 
 // 获取 Frankfurter 支持的所有货币列表并且更新到数据库
-export async function getExchangeRate() {
+export async function getExchangeRateList() {
   try {
     const response = await axios.get(`${frankfurterbaseURL}/currencies`, {
       timeout: 5000  // 5秒超时
@@ -95,6 +95,41 @@ export async function fetchHistoricalRates(startDate, endDate) {
       return fetchHistoricalRates(startDate, endDate);
     }
 
+    throw error;
+  }
+}
+
+// 抓取最新数据并添加到数据库中
+export async function fetchLatestRates() {
+  try {
+    console.log(`\n📊 开始抓取最新汇率数据...`);
+
+    const response = await axios.get(`${frankfurterbaseURL}/latest`, {
+      timeout: 5000  // 5秒超时
+    });
+
+    const { base, rates, date } = response.data;
+    const currencyCount = Object.keys(rates).length;
+
+    console.log(`✅ 成功获取 ${currencyCount} 种货币的最新汇率，基准货币: ${base}`);
+
+    // 同步数据库模型
+    await HistoryRate.sync({ force: false });
+    // 存储到数据库
+    await HistoryRate.bulkCreate(
+      Object.keys(rates).map(code => ({
+        rate_date: date,
+        base_currency: base,
+        target_currency: code,
+        exchange_rate: rates[code]
+      })),
+      {
+        updateOnDuplicate: ['rate_date', 'base_currency', 'target_currency']  // 存在则更新汇率
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('❌ 抓取最新汇率数据失败:', error.message);
     throw error;
   }
 }
