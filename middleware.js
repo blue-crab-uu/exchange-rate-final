@@ -26,7 +26,7 @@ app.get(['/', '/currencies-rate'], (req, res) => {
 
 // 处理 /currencies-rate/:baseCurrency/:targetCurrency 路径，显示货币兑换详情页面
 app.get('/currencies-rate/:baseCurrency/:targetCurrency', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'rate-detail.html'));
+  res.sendFile(path.join(__dirname, 'public', 'rate-subdetail.html'));
 });
 
 // 处理 /currencies-rate/:currencyCode 路径，显示汇率详情页面
