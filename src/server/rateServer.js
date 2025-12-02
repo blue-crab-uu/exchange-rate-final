@@ -71,7 +71,46 @@ export async function getLatestRateDate() {
   }
 }
 
+// 获取除去最新日期的5天历史数据
+export async function getHistoricalRates() {
+  try {
+    // 获取所有不同的日期，按日期降序排列
+    const allDates = await HistoryRate.findAll({
+      attributes: ['rate_date'],
+      group: ['rate_date'],
+      order: [['rate_date', 'DESC']]
+    });
 
+    console.log(`数据库中不同的日期数量: ${allDates.length}`);
 
+    // 如果数据不足2天，则返回空数组
+    if (allDates.length <= 1) {
+      console.log('数据不足，无法获取历史数据');
+      return [];
+    }
 
+    // 获取除去最新日期的前5天历史日期
+    const historicalDates = allDates.slice(1, 6);
+    console.log(`历史日期: ${historicalDates.map(d => d.rate_date).join(', ')}`);
 
+    const historicalRates = [];
+
+    // 为每个历史日期获取汇率数据
+    for (const dateObj of historicalDates) {
+      const date = dateObj.rate_date;
+      console.log(`获取日期 ${date} 的汇率数据...`);
+      const ratesForDate = await getDayALLRates(date);
+
+      historicalRates.push({
+        date: date,
+        rates: ratesForDate
+      });
+    }
+
+    console.log(`获取历史数据成功: 共 ${historicalRates.length} 天的数据`);
+    return historicalRates;
+  } catch (error) {
+    console.error(`获取历史汇率数据失败:`, error);
+    throw error;
+  }
+}

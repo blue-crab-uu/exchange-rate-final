@@ -1,5 +1,5 @@
 import express from 'express';
-import { getDayALLRatesController, getONneHistoryRatesController, getCurrencyListController, getLatestRateDateController } from '../controllers/rateController.js';
+import { getDayALLRatesController, getONneHistoryRatesController, getCurrencyListController, getLatestRateDateController, getHistoricalRatesController } from '../controllers/rateController.js';
 import { getExchangeRateListController, fetchHistoricalRatesController, fetchLatestRatesController } from '../controllers/devRateContorller.js';
 const router = express.Router();
 
@@ -15,13 +15,16 @@ router.get('/currency-list', getCurrencyListController);
 // 获取数据库中最新的rate_date
 router.get('/latest-rate-date', getLatestRateDateController);
 
-// 开发用 - 获取 Frankfurter 支持的所有货币列表
+// 获取除去最新日期的5天历史数据
+router.get('/historical-rates', getHistoricalRatesController);
+
+// 开发用 - 获取 Frankfurter 支持的所有货币列表并存储到数据库
 router.get('/dev/currency-list', getExchangeRateListController);
 
-// 开发用 - 获取指定日期范围内的历史汇率数据
+// 开发用 - 获取指定日期范围内的历史汇率数据并存储到数据库
 router.post('/dev/historical-rates', fetchHistoricalRatesController);
 
-// 开发用 - 获取 Frankfurter 的最新汇率数据
+// 开发用 - 获取 Frankfurter 的最新汇率数据并存储到数据库
 router.get('/dev/latest-rates', fetchLatestRatesController);
 
 export default router;

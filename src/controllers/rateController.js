@@ -1,4 +1,4 @@
-import { getDayALLRates, getONneHistoryRates, getCurrencyList, getLatestRateDate } from '../server/rateServer.js';
+import { getDayALLRates, getONneHistoryRates, getCurrencyList, getLatestRateDate, getHistoricalRates } from '../server/rateServer.js';
 
 
 // 查询数据库指定日期默认货币为EUR的汇率
@@ -46,4 +46,13 @@ export async function getLatestRateDateController(_req, res) {
   }
 }
 
-
+// 获取除去最新日期的5天历史数据
+export async function getHistoricalRatesController(req, res) {
+  try {
+    const historicalRates = await getHistoricalRates();
+    res.json({ historicalRates });
+  } catch (error) {
+    console.error('获取历史汇率失败:', error);
+    res.status(500).json({ error: '获取历史汇率失败' });
+  }
+}
