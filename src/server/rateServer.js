@@ -134,11 +134,11 @@ export async function getTargetCurrencyRates(target_currency, datetime = 7, base
       order: [['rate_date', 'DESC']]
     });
 
-
+    console.log(`找到${base_currency}到${target_currency}的汇率数据日期数量: ${allDates.length}`);
 
     // 获取datetime天历史日期
     const historicalDates = allDates.slice(0, datetime);
-
+    console.log(`需要获取${datetime}天的历史数据，实际可用日期: ${historicalDates.length}`);
 
     const historicalRates = [];
 
@@ -148,12 +148,19 @@ export async function getTargetCurrencyRates(target_currency, datetime = 7, base
       console.log(`获取${base_currency}日期 ${date} 的${target_currency}汇率数据...`);
       const rateForDate = await getONneHistoryRates(base_currency, target_currency, date);
 
-      historicalRates.push({
-        date: date,
-        target_currency: target_currency,
-        rate: rateForDate
-      });
+      // 只有当找到汇率数据时才添加到结果中
+      if (rateForDate) {
+        historicalRates.push({
+          id: rateForDate.id,
+          base_currency: rateForDate.base_currency,
+          target_currency: rateForDate.target_currency,
+          rate_date: rateForDate.rate_date,
+          exchange_rate: rateForDate.exchange_rate
+        });
+      }
     }
+
+    console.log(`成功获取${historicalRates.length}条历史汇率数据`);
     return historicalRates;
   } catch (error) {
     console.error(`获取${base_currency}到${target_currency}最近${datetime}天历史汇率数据失败:`, error);
