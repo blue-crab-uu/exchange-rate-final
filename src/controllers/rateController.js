@@ -1,4 +1,4 @@
-import { getDayALLRates, getONneHistoryRates, getCurrencyList, getLatestRateDate, getHistoricalRates } from '../server/rateServer.js';
+import { getDayALLRates, getONneHistoryRates, getCurrencyList, getLatestRateDate, getHistoricalRates, getTargetCurrencyRates } from '../server/rateServer.js';
 
 
 // 查询数据库指定日期默认货币为EUR的汇率
@@ -37,9 +37,10 @@ export async function getCurrencyListController(_req, res) {
 };
 
 // 获取数据库中最新的rate_date
-export async function getLatestRateDateController(_req, res) {
+export async function getLatestRateDateController(req, res) {
+  const { currency } = req.query;
   try {
-    const latestRates = await getLatestRateDate();
+    const latestRates = await getLatestRateDate(currency);
     res.json({ latestRates });
   } catch (error) {
     res.status(500).json({ error: '获取最新汇率日期失败' });
@@ -48,8 +49,26 @@ export async function getLatestRateDateController(_req, res) {
 
 // 获取除去最新日期的5天历史数据
 export async function getHistoricalRatesController(req, res) {
+  const { currency } = req.query;
   try {
-    const historicalRates = await getHistoricalRates();
+    const historicalRates = await getHistoricalRates(currency);
+    res.json({ historicalRates });
+  } catch (error) {
+    console.error('获取历史汇率失败:', error);
+    res.status(500).json({ error: '获取历史汇率失败' });
+  }
+}
+
+// 查询数据库指定基础货币，目标货币最近datetime天的历史汇率，默认为base_currency = 'EUR',datetime = 7
+export async function getTargetCurrencyRatesController(req, res) {
+  const { target_currency, datetime = 7, base_currency = 'EUR' } = req.body;
+
+  if (!target_currency) {
+    return res.status(400).json({ error: '目标货币不能为空' });
+  }
+
+  try {
+    const historicalRates = await getTargetCurrencyRates(target_currency, datetime, base_currency);
     res.json({ historicalRates });
   } catch (error) {
     console.error('获取历史汇率失败:', error);

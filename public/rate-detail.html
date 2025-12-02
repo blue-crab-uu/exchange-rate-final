@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>汇率详情</title>
+    <!-- 引入 Vue.js 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        body {
+            background-color: #f8fafc;
+        }
+
+        .back-btn {
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+
+<body class="min-h-screen p-4 md:p-8">
+    <div id="app" class="max-w-6xl mx-auto">
+        <header class="mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-800">{{ targetCurrency ? currencyCode + ' 兑换 ' +
+                        targetCurrency + ' 汇率详情' : currencyCode + ' 汇率详情' }}</h1>
+                    <p class="text-gray-600 mt-2">{{ targetCurrency ? currencyCode + ' 兑换 ' + targetCurrency + ' 汇率历史' :
+                        '展示 ' + currencyCode + ' 的最新汇率数据和历史汇率数据' }}</p>
+                </div>
+                <button @click="goBack"
+                    class="back-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium">
+                    ← 返回货币列表
+                </button>
+            </div>
+        </header>
+
+        <main>
+            <!-- 货币选择器 - 只在没有目标货币的页面显示 -->
+            <div v-if="!targetCurrency" class="mb-8 bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">选择您想要兑换的货币</h2>
+                <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+                    <button v-for="currency in availableCurrencies" :key="currency"
+                        @click="selectTargetCurrency(currency)"
+                        class="p-2 text-center bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition-colors duration-200 text-sm font-medium text-blue-700"
+                        :class="{ 'bg-blue-200 border-blue-300': targetCurrency === currency }">
+                        {{ currency }}
+                    </button>
+                </div>
+            </div>
+
+            <!-- 目标货币汇率数据 - 只在有目标货币的页面显示 -->
+            <div v-if="targetCurrency" class="mb-8">
+                <!-- 天数选择器 -->
+                <div class="mb-6 bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center space-x-4">
+                        <label class="text-lg font-medium text-gray-700">选择天数：</label>
+                        <select v-model="days" class="border border-gray-300 rounded-md px-3 py-2 text-sm">
+                            <option value="3">3天</option>
+                            <option value="5">5天</option>
+                            <option value="7">7天</option>
+                            <option value="14">14天</option>
+                            <option value="30">30天</option>
+                        </select>
+                        <button @click="fetchTargetCurrencyRates"
+                            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200">
+                            查看汇率
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 汇率数据表格 -->
+                <div v-if="targetCurrencyRates.length > 0">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">{{ currencyCode }} 兑换 {{ targetCurrency }} 汇率数据
+                    </h2>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white rounded-lg shadow overflow-hidden">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th
+                                        class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        日期</th>
+                                    <th
+                                        class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        基准货币</th>
+                                    <th
+                                        class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        目标货币</th>
+                                    <th
+                                        class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        汇率</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                <tr v-for="rate in targetCurrencyRates" :key="rate.rate.id">
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ rate.rate.rate_date
+                                        }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{{
+                                        rate.rate.base_currency }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{
+                                        rate.rate.target_currency }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{
+                                        rate.rate.exchange_rate }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 加载状态 -->
+            <div v-if="loading" class="flex justify-center items-center h-64">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                <span class="ml-3 text-gray-600">加载中...</span>
+            </div>
+
+            <!-- 错误信息 -->
+            <div v-else-if="error" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                错误: {{ error }}
+            </div>
+
+            <!-- 最新汇率数据 -->
+            <div v-if="latestRates.length > 0 && !targetCurrency" class="mb-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">最新汇率数据</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white rounded-lg shadow overflow-hidden">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th
+                                    class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    基准货币</th>
+                                <th
+                                    class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    目标货币</th>
+                                <th
+                                    class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    汇率日期</th>
+                                <th
+                                    class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    汇率</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            <tr v-for="rate in latestRates" :key="rate.id">
+                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{{
+                                    rate.base_currency }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ rate.target_currency }}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ rate.rate_date }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ rate.exchange_rate }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 历史汇率数据 -->
+            <div v-if="historicalRates && historicalRates.length > 0 && !targetCurrency" class="mb-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">历史汇率数据（最近5天）</h2>
+                <div v-for="dayData in historicalRates" :key="dayData.date" class="mb-6">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">日期: {{ dayData.date }}</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white rounded-lg shadow overflow-hidden">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th
+                                        class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        基准货币</th>
+                                    <th
+                                        class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        目标货币</th>
+                                    <th
+                                        class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        汇率</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                <tr v-for="rate in dayData.rates" :key="rate.id">
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">{{
+                                        rate.base_currency }}</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{{
+                                        rate.target_currency }}</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{{ rate.exchange_rate
+                                        }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 空状态 -->
+            <div v-if="!loading && !error && latestRates.length === 0 && (!historicalRates || historicalRates.length === 0) && !targetCurrency"
+                class="text-center py-12">
+                <p class="text-gray-500">暂无汇率数据</p>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    currencyCode: '',
+                    latestRates: [],
+                    historicalRates: [],
+                    loading: false,
+                    error: null,
+                    // 新增数据属性
+                    availableCurrencies: ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'HKD', 'SGD', 'NZD', 'KRW', 'INR', 'BRL', 'RUB', 'ZAR', 'MXN', 'SEK', 'NOK', 'DKK'],
+                    targetCurrency: '',
+                    targetCurrencyRates: [],
+                    days: 7,
+                    // 多语言支持
+                    currentLocale: 'zh-CN'
+                };
+            },
+            mounted() {
+                this.getCurrencyCodeFromURL();
+                this.fetchRateData();
+            },
+            methods: {
+                getCurrencyCodeFromURL() {
+                    // 从URL路径中获取货币代码，例如 /currencies-rate/EUR 中的 EUR 或 /currencies-rate/EUR/AUD 中的 EUR 和 AUD
+                    const pathParts = window.location.pathname.split('/').filter(part => part !== '');
+
+                    if (pathParts.length >= 2) {
+                        // 格式：/currencies-rate/EUR/AUD
+                        this.currencyCode = pathParts[1] || 'EUR';
+                        this.targetCurrency = pathParts[2] || '';
+
+                        // 如果URL中有目标货币，自动获取汇率数据
+                        if (this.targetCurrency) {
+                            this.fetchTargetCurrencyRates();
+                        }
+                    } else if (pathParts.length >= 1) {
+                        // 格式：/currencies-rate/EUR
+                        this.currencyCode = pathParts[0] || 'EUR';
+                    } else {
+                        this.currencyCode = 'EUR';
+                    }
+
+                    // 设置页面标题
+                    this.updatePageTitle();
+                },
+                async fetchRateData() {
+                    this.loading = true;
+                    this.error = null;
+
+                    try {
+                        // 获取最新汇率数据（带货币参数）
+                        const latestResponse = await fetch(`/latest-rate-date?currency=${this.currencyCode}`);
+                        if (!latestResponse.ok) {
+                            throw new Error('获取最新汇率数据失败');
+                        }
+                        const latestData = await latestResponse.json();
+                        this.latestRates = latestData.latestRates || [];
+
+                        // 获取历史汇率数据（带货币参数）
+                        const historicalResponse = await fetch(`/historical-rates?currency=${this.currencyCode}`);
+                        if (!historicalResponse.ok) {
+                            throw new Error('获取历史汇率数据失败');
+                        }
+                        const historicalData = await historicalResponse.json();
+                        this.historicalRates = historicalData.historicalRates || [];
+                    } catch (err) {
+                        this.error = err.message;
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                // 新增方法：选择目标货币
+                selectTargetCurrency(currency) {
+                    // 在当前页面更新URL并重新加载数据
+                    if (currency) {
+                        // 更新浏览器URL，但不刷新页面
+                        const newUrl = `/currencies-rate/${this.currencyCode}/${currency}`;
+                        window.history.pushState({}, '', newUrl);
+
+                        // 更新目标货币并重新获取数据
+                        this.targetCurrency = currency;
+                        this.getCurrencyCodeFromURL();
+                        this.fetchTargetCurrencyRates();
+                    }
+                },
+                // 新增方法：获取目标货币汇率数据
+                async fetchTargetCurrencyRates() {
+                    if (!this.targetCurrency) {
+                        alert('请先选择目标货币');
+                        return;
+                    }
+
+                    this.loading = true;
+                    this.error = null;
+
+                    try {
+                        const response = await fetch('/target-currency-rates', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                target_currency: this.targetCurrency,
+                                datetime: this.days,
+                                base_currency: this.currencyCode
+                            })
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('获取目标货币汇率数据失败');
+                        }
+
+                        const data = await response.json();
+                        this.targetCurrencyRates = data.historicalRates || [];
+                    } catch (err) {
+                        this.error = err.message;
+                        console.error('获取目标货币汇率数据失败:', err);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                goBack() {
+                    window.location.href = '/currencies-rate';
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+
+</html>
